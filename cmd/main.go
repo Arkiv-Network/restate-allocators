@@ -43,21 +43,6 @@ func main() {
 		Version: Version,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:        "environment",
-				Usage:       fmt.Sprintf("Environment (%s or %s)", EnvironmentStaging, EnvironmentProduction),
-				EnvVars:     []string{"ENVIRONMENT"},
-				Destination: &cfg.environment,
-				Required:    true,
-				Action: func(ctx *cli.Context, v string) error {
-					switch v {
-					case EnvironmentStaging, EnvironmentProduction:
-						return nil
-					default:
-						return fmt.Errorf("Invalid environment. Valid values: [%s, %s]", EnvironmentStaging, EnvironmentProduction)
-					}
-				},
-			},
-			&cli.StringFlag{
 				Name:        "addr",
 				Value:       ":9080",
 				Usage:       "address to listen on",
