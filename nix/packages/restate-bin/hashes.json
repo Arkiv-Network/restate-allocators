@@ -1,0 +1,30 @@
+{
+  "x86_64-linux": {
+    "platformSuffix": "x86_64-unknown-linux-musl",
+    "hashes": {
+      "cli": "sha256-MqfjoGffD9Wgi4jnOMCu/f5wtXqo5hwIe0orM7Ry+Is=",
+      "server": "sha256-n9VnmFjGcWHwgJBmamkukc1+ur75XXpTIXpOhXsi9g0="
+    }
+  },
+  "x86_64-darwin": {
+    "platformSuffix": "x86_64-apple-darwin",
+    "hashes": {
+      "cli": "sha256-0ZoEskll6v23AYBasAqYVyeQiZK2EEs5/6t9i842bPw=",
+      "server": "sha256-Bmf+jLHJTqP3ko5eRNuNsZTdyYQLGpVfXDtb9z+19aQ="
+    }
+  },
+  "aarch64-linux": {
+    "platformSuffix": "aarch64-unknown-linux-musl",
+    "hashes": {
+      "cli": "",
+      "server": ""
+    }
+  },
+  "aarch64-darwin": {
+    "platformSuffix": "aarch64-apple-darwin",
+    "hashes": {
+      "cli": "sha256-zAsiY1D6EDOMYkvZKJm8D6EVGh2+gkydajDAv3e/oD4=",
+      "server": "sha256-xg6s++DRCYoZQ5ZwZVPUbFJXN/2L0WDZRj+mf/3nIv0="
+    }
+  }
+}

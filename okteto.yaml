@@ -1,0 +1,15 @@
+dev:
+  restate-allocators:
+    command: ["/bin/bash"]
+    image: okteto/golang:1
+    sync:
+      - .:/usr/src/app
+    persistentVolume:
+      size: 2Gi
+    resources:
+      limits:
+        cpu: 4000m
+        memory: 8Gi
+      requests:
+        cpu: 2000m
+        memory: 4Gi

@@ -1,0 +1,11 @@
+# syntax=docker/dockerfile:1
+
+FROM gcr.io/distroless/static-debian12:debug
+
+ARG TARGETPLATFORM
+
+WORKDIR /app
+
+COPY ${TARGETPLATFORM}/restate-allocators /app/
+
+ENTRYPOINT ["/app/restate-allocators"]
