@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+
+name: Tests
+
+on:
+  push:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Installl Go
+        uses: actions/setup-go@v6
+        with:
+          # NOTE: Keep in sync with Dockerfile
+          go-version: '1.24'
+      - name: Run tests
+        run: go test ./...
