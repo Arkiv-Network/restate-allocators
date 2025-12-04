@@ -68,8 +68,6 @@ jobs:
           platforms: ${{ matrix.platform }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            GOARCH=${{ matrix.goarch }}
           cache-from: type=gha,scope=${{ matrix.goarch }}
           cache-to: type=gha,mode=max,scope=${{ matrix.goarch }}
         env:
