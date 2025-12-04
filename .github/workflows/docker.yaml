@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   docker:
-    runs-on: cluster-runner
+    runs-on: ubuntu-latest
     permissions:
       contents: read
 
