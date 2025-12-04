@@ -14,7 +14,7 @@ RUN mkdir /out
 RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg/mod/ \
     GOOS=${TARGETOS} GOARCH=${TARGETARCH} CGO_ENABLED=0 go build -o /out/service ./cmd
 
-FROM alpine
+FROM --platform=$TARGETPLATFORM alpine
 
 RUN apk add --no-cache ca-certificates
 
