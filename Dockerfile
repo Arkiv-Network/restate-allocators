@@ -12,7 +12,7 @@ ADD . /build/
 RUN mkdir /out
 
 RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg/mod/ \
-    GOARCH=${GOARCH} GOOS=${GOOS} CGO_ENABLED=0 go build -o /out/service ./cmd
+    GOOS=${TARGETOS} GOARCH=${TARGETARCH} CGO_ENABLED=0 go build -o /out/service ./cmd
 
 FROM alpine
 
