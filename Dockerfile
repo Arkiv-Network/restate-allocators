@@ -10,7 +10,7 @@ RUN mkdir /out
 
 RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg/mod/ go build -o /out/service ./cmd
 
-FROM alpine
+FROM alpine:3.22
 
 RUN apk add --no-cache ca-certificates
 
