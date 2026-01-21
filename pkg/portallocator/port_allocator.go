@@ -1,6 +1,7 @@
 package portallocator
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -50,16 +51,109 @@ type AllocatedPortRange struct {
 	Count uint `json:"count"`
 }
 
+type AllocationErrorKind = string
+
+const NO_ALLOCATABLE_RANGES AllocationErrorKind = "NO_ALLOCATABLE_RANGES"
+
+type PortAllocationError struct {
+	kind			AllocationErrorKind
+	allowed 	AllowedPorts
+	allocated	[]AllocatedPortRange
+	count			uint
+}
+
+func (e *PortAllocationError) Error() string {
+	msg := "Unknown port allocation error"
+
+	switch e.kind {
+	case NO_ALLOCATABLE_RANGES:
+		msg = "Failed to find valid port range to allocate"
+	}
+
+	return msg
+}
+
+func allocate(allowedPorts AllowedPorts, allocatedPorts []AllocatedPortRange, portCount uint) (*AllocatedPortRange, error) {
+	allocated := make([]AllocatedPortRange, len(allocatedPorts))
+	copy(allocated, allocatedPorts)
+
+	slices.SortFunc(allocated, func(a, b AllocatedPortRange) int {
+		return int(a.From) - int(b.From)
+	})
+
+	if len(allocated) == 0 {
+		newAllocated := AllocatedPortRange{
+			From:  allowedPorts.From,
+			Count: portCount,
+		}
+
+		if !allowedPorts.IsAllowed(newAllocated) {
+			return nil, errors.New("Not enough ports available")
+		}
+
+		return &newAllocated, nil
+	}
+
+	for idx, current := range allocated[1:] {
+		previous := allocated[idx]
+
+		if current.From == previous.From {
+			continue
+		}
+
+		if current.From - (previous.From + previous.Count) >= portCount {
+			newAllocated := AllocatedPortRange{
+				From:  previous.From + previous.Count,
+				Count: portCount,
+			}
+
+			return &newAllocated, nil
+		}
+	}
+
+	lastAllocated := allocated[len(allocated) - 1]
+
+	if lastAllocated.From + lastAllocated.Count + portCount < allowedPorts.To {
+		newAllocated := AllocatedPortRange{
+			From: lastAllocated.From + lastAllocated.Count,
+			Count: portCount,
+		}
+
+		return &newAllocated, nil
+	}
+
+	err := PortAllocationError {
+		kind: NO_ALLOCATABLE_RANGES,
+		allowed: allowedPorts,
+		allocated: allocated,
+		count: portCount,
+	}
+	return nil, &err
+}
+
 func (p *PortAllocator) AllocatePortRange(ctx restate.ObjectContext, params AllocatePortsParams) (*AllocatedPortRange, error) {
-	allowedPorts, err := restate.Get[AllowedPorts](ctx, stateAllowed)
+	allowedPortsPtr, err := restate.Get[*AllowedPorts](ctx, stateAllowed)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get allowed ports: %w", err)
 	}
+	if allowedPortsPtr == nil {
+			return nil, restate.TerminalErrorf("port allocator not initialized: missing %q", stateAllowed)
+	}
 
-	allocatedPortsMap, err := restate.Get[map[string]AllocatedPortRange](ctx, stateAllocated)
+	allowedPorts := *allowedPortsPtr
+	if allowedPorts.From == 0 && allowedPorts.To == 0 {
+		return nil, fmt.Errorf("Invalid allowed port range: From=%d, To=%d", allowedPorts.From, allowedPorts.To)
+	}
+
+	allocatedPortsMapPtr, err := restate.Get[*map[string]AllocatedPortRange](ctx, stateAllocated)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get allocated ports: %w", err)
 	}
+	if allocatedPortsMapPtr == nil {
+		return nil, restate.TerminalErrorf("port allocator not initialized: missing %q", stateAllocated)
+	}
+
+	allocatedPortsMap := *allocatedPortsMapPtr
 
 	{
 		allocation, ok := allocatedPortsMap[params.Network]
@@ -73,74 +167,15 @@ func (p *PortAllocator) AllocatePortRange(ctx restate.ObjectContext, params Allo
 	}
 
 	allocated := slices.Collect(maps.Values(allocatedPortsMap))
-
-	slices.SortFunc(allocated, func(a, b AllocatedPortRange) int {
-		return int(a.From) - int(b.From)
-	})
-
-	if len(allocated) == 0 {
-		newAllocated := AllocatedPortRange{
-			From:  allowedPorts.From,
-			Count: uint(params.Count),
-		}
-
-		if !allowedPorts.IsAllowed(newAllocated) {
-			return nil, restate.TerminalErrorf("not enough ports available")
-		}
-
-		allocatedPortsMap[params.Network] = newAllocated
-
-		restate.Set(ctx, stateAllocated, allocatedPortsMap)
-
-		return &newAllocated, nil
+	newAllocated, err := allocate(allowedPorts, allocated, params.Count)
+	if err != nil {
+		return nil, restate.TerminalError(err)
 	}
 
-	prevAllocated := allocated[0]
-
-	if (prevAllocated.From - allowedPorts.From) >= uint(params.Count) {
-		newAllocated := AllocatedPortRange{
-			From:  allowedPorts.From,
-			Count: uint(params.Count),
-		}
-
-		allocatedPortsMap[params.Network] = newAllocated
-
-		restate.Set(ctx, stateAllocated, allocatedPortsMap)
-
-		return &newAllocated, nil
-	}
-
-	for _, allocatedPort := range allocated[1:] {
-		if allocatedPort.From-(prevAllocated.From+prevAllocated.Count) >= uint(params.Count) {
-			newAllocated := AllocatedPortRange{
-				From:  prevAllocated.From + prevAllocated.Count,
-				Count: uint(params.Count),
-			}
-
-			allocatedPortsMap[params.Network] = newAllocated
-
-			restate.Set(ctx, stateAllocated, allocatedPortsMap)
-
-			return &newAllocated, nil
-		}
-	}
-
-	lastAllocated := allocated[len(allocated)-1]
-
-	newAllocated := AllocatedPortRange{
-		From:  lastAllocated.From + lastAllocated.Count,
-		Count: uint(params.Count),
-	}
-
-	if !allowedPorts.IsAllowed(newAllocated) {
-		return nil, restate.TerminalErrorf("not enoughports available")
-	}
-
-	allocatedPortsMap[params.Network] = newAllocated
-
+	allocatedPortsMap[params.Network] = *newAllocated
 	restate.Set(ctx, stateAllocated, allocatedPortsMap)
 
-	return &newAllocated, nil
+	return newAllocated, nil
 }
 
 func (p *PortAllocator) FreePortsForNetwork(ctx restate.ObjectContext, network string) error {
